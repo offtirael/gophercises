@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 )
 
 type Question struct {
@@ -34,28 +35,44 @@ func readQuizFile(quizFilePath string) []Question {
 	return questions
 }
 
-func runQuiz(questions []Question) (int, int) {
-	correctCount, incorrectCount := 0, 0
+func runQuiz(questions []Question, timer *time.Timer) (score int) {
+	correctCount := 0
 	var usersAnswer string
+	answers := make(chan string)
+
 	for _, question := range questions {
 		fmt.Printf("%s: ", question.text)
-		fmt.Scanf("%s", &usersAnswer)
-		if usersAnswer == question.answer {
-			correctCount++
-		} else {
-			incorrectCount++
+		go func() {
+			fmt.Scanf("%s", &usersAnswer)
+			answers <- usersAnswer
+		}()
+
+		select {
+		case <-timer.C:
+			fmt.Println("\nTimeout!")
+			return correctCount
+		case answer := <-answers:
+			if answer == question.answer {
+				correctCount++
+			}
 		}
 	}
-	return correctCount, incorrectCount
+
+	return correctCount
 }
 
 func main() {
 	quizFile := flag.String("file", "problems.csv", "Quiz file name.")
+	timeout := flag.Int("timeout", 30, "Quiz timeout.")
 	flag.Parse()
 
 	records := readQuizFile(*quizFile)
-	correctCount, incorrectCount := runQuiz(records)
-	fmt.Println("Your results!")
+	fmt.Println("Press Enter to start the Quiz")
+	fmt.Scanln()
+
+	timer := time.NewTimer(time.Second * time.Duration(*timeout))
+	correctCount := runQuiz(records, timer)
+	fmt.Println("Your results:")
 	fmt.Printf("Correct answer count: %d\n", correctCount)
-	fmt.Printf("Incorrect answer count: %d\n", incorrectCount)
+	fmt.Printf("Incorrect answer count: %d\n", len(records)-correctCount)
 }
