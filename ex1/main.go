@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"time"
 )
@@ -64,9 +65,15 @@ func runQuiz(questions []Question, timer *time.Timer) (score int) {
 func main() {
 	quizFile := flag.String("file", "problems.csv", "Quiz file name.")
 	timeout := flag.Int("timeout", 30, "Quiz timeout.")
+	shuffle := flag.Bool("shuffle", false, "Shuffle quiz")
 	flag.Parse()
 
 	records := readQuizFile(*quizFile)
+	if *shuffle {
+		rand.Seed(time.Now().UnixNano())
+		rand.Shuffle(len(records), func(i, j int) { records[i], records[j] = records[j], records[i] })
+	}
+
 	fmt.Println("Press Enter to start the Quiz")
 	fmt.Scanln()
 
