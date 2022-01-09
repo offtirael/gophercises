@@ -6,6 +6,11 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type pathUrlMapping struct {
+	Path string `yaml:"path"`
+	Url  string `yaml:"url"`
+}
+
 // MapHandler will return an http.HandlerFunc (which also
 // implements http.Handler) that will attempt to map any
 // paths (keys in the map) to their corresponding URL (values
@@ -16,7 +21,7 @@ func MapHandler(pathsToUrls map[string]string, fallback http.Handler) http.Handl
 	//	TODO: Implement this...
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if route, ok := pathsToUrls[r.URL.Path]; ok {
-			http.Redirect(w, r, route, http.StatusSeeOther)
+			http.Redirect(w, r, route, http.StatusFound)
 			return
 		}
 		fallback.ServeHTTP(w, r)
@@ -40,7 +45,7 @@ func MapHandler(pathsToUrls map[string]string, fallback http.Handler) http.Handl
 // See MapHandler to create a similar http.HandlerFunc via
 // a mapping of paths to urls.
 func YAMLHandler(yml []byte, fallback http.Handler) (http.HandlerFunc, error) {
-	var listOfPaths []map[string]string
+	var listOfPaths []pathUrlMapping
 
 	err := yaml.Unmarshal(yml, &listOfPaths)
 	if err != nil {
@@ -49,14 +54,8 @@ func YAMLHandler(yml []byte, fallback http.Handler) (http.HandlerFunc, error) {
 
 	pathsToUrls := make(map[string]string)
 	for _, v := range listOfPaths {
-		pathsToUrls[v["path"]] = v["url"]
+		pathsToUrls[v.Path] = v.Url
 	}
 
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if route, ok := pathsToUrls[r.URL.Path]; ok {
-			http.Redirect(w, r, route, http.StatusSeeOther)
-			return
-		}
-		fallback.ServeHTTP(w, r)
-	}), nil
+	return MapHandler(pathsToUrls, fallback), nil
 }
